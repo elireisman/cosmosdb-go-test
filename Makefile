@@ -32,6 +32,7 @@ test:
 
 .PHONY: run
 run:
+	[ ! -e emulatorcert.crt ] && curl -k https://$(IPADDR):8081/_explorer/emulator.pem > emulatorcert.crt
 	bin/demo
 .PHONY:
 all: build test run
