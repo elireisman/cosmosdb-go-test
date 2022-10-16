@@ -1,32 +1,32 @@
 package main
 
 import (
-	"github.com/Azure/azure-sdk-for-go/sdk/azcosmos"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"context"
+	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 )
 
 func main() {
 	// create client, using default emulator creds and URI
-	emulatorKey = ""
+	emulatorKey := ""
 	cred, err := azcosmos.NewKeyCredential(emulatorKey)
 	if err != nil {
 		panic(err.Error())
 	}
-	emulatorURI = "http://localhost:8081"
+	emulatorURI := "http://localhost:8081"
 	client, err := azcosmos.NewClientWithKey(emulatorURI, cred, nil)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	// create database
-	dbName = "eli_demo"
-	dbCfg := azcosmos.DatabaseProperties{Id: dbName}
+	dbName := "eli_demo"
+	dbCfg := azcosmos.DatabaseProperties{ID: dbName}
 	db, err := client.CreateDatabase(context.Background(), dbCfg, nil)
 	if err != nil {
 		panic(err.Error())
 	}
-	defer db.Close()
-	fmt.Printf("[dbResp] %+v\n", dbResp)
+	fmt.Printf("[db] %+v\n", db)
 
 	// create container and select partition key
 	thruProps := &CreateContainerOptions{ThroughputProperties: azcosmos.NewManualThroughputProperties(400)}
@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Printf("[ctrResp] %+v\n", ctrResp)
+	fmt.Printf("[ctr] %+v\n", ctr)
 
 	// create a record in the container
 	fileId := 1234    // record ID

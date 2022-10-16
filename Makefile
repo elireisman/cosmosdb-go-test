@@ -2,7 +2,10 @@
 
 IPADDR=$(shell ifconfig | grep "inet " | grep -Fv 127.0.0.1 | awk '{print $2}' | head -n 1)
 
-.PHONY: pull
+
+.PHONY: emu
+emu:
+	@if ! docker info >/dev/null 2>&1; then echo "ERROR: Docker must be running locally"; exit 1; fi
 	@docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator
 	@docker run \
 		--publish 8081:8081 \
@@ -12,6 +15,7 @@ IPADDR=$(shell ifconfig | grep "inet " | grep -Fv 127.0.0.1 | awk '{print $2}' |
 		--env AZURE_COSMOS_EMULATOR_PARTITION_COUNT=10 \
 		--env AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE=true \
 		--env AZURE_COSMOS_EMULATOR_IP_ADDRESS_OVERRIDE=$(IPADDR) \
+		--rm \
 		--interactive \
 		--tty \
 		mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator
@@ -20,7 +24,7 @@ IPADDR=$(shell ifconfig | grep "inet " | grep -Fv 127.0.0.1 | awk '{print $2}' |
 build:
 	@mkdir -p bin
 	@rm -f bin/*
-	@go build -o bin/demo ./...
+	@go build -o bin/demo cmd/main.go
 
 .PHONY: test
 test:
@@ -30,6 +34,6 @@ test:
 run:
 	bin/demo
 .PHONY:
-all: test build run
+all: build test run
 
 
