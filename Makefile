@@ -6,15 +6,12 @@ IPADDR := "$(shell ifconfig | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $
 .PHONY: all
 all: build test run
 
-.PHONY: emu
-emu: cert docker
-
 .PHONY: cert
 cert:
 	@curl -k https://$(IPADDR):8081/_explorer/emulator.pem > emulatorcert.crt
 
-.PHONY: docker
-docker:
+.PHONY: emu
+emu:
 	@if ! docker info >/dev/null 2>&1; then echo "ERROR: Docker must be running locally"; exit 1; fi
 	docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator
 	docker run \
