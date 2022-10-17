@@ -2,13 +2,14 @@
 
 IPADDR := "$(shell ifconfig | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $$2}' | head -n 1)"
 
-
 .PHONY: all
 all: build test run
 
 .PHONY: cert
 cert:
-	@curl -k https://$(IPADDR):8081/_explorer/emulator.pem > emulatorcert.crt
+	@curl -k -q https://$(IPADDR):8081/_explorer/emulator.pem > emulatorcert.crt
+	@sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain emulatorcert.crt
+	@open https://localhost:8081/_explorer/index.html
 
 .PHONY: emu
 emu:
@@ -35,7 +36,7 @@ build:
 
 .PHONY: test
 test:
-	#go test ./...
+	@#go test ./...
 
 .PHONY: run
 run:
