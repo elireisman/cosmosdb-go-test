@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
+	"strconv"
 )
 
 func main() {
@@ -19,51 +21,69 @@ func main() {
 		panic(err.Error())
 	}
 
+	fmt.Printf("[CREATE DATABASE]\n")
+
 	// create database
 	dbName := "eli_demo"
 	dbCfg := azcosmos.DatabaseProperties{ID: dbName}
-	db, err := client.CreateDatabase(context.Background(), dbCfg, nil)
+	dbResp, err := client.CreateDatabase(context.Background(), dbCfg, nil)
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Printf("[db] %+v\n", db)
+	fmt.Printf("[dbResp] %+v\n", dbResp)
+
+	db, err := client.NewDatabase(dbName)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	fmt.Printf("[CREATE CONTAINER]\n")
 
 	// create container and select partition key
-	thruProps := &CreateContainerOptions{ThroughputProperties: azcosmos.NewManualThroughputProperties(400)}
+	ctrName := "files"
+	thruProp := azcosmos.NewManualThroughputProperties(400)
+	ctrProps := &azcosmos.CreateContainerOptions{ThroughputProperties: &thruProp}
 	ctrCfg := azcosmos.ContainerProperties{
-		Id: "files",
+		ID: ctrName,
 		PartitionKeyDefinition: azcosmos.PartitionKeyDefinition{
 			Paths: []string{"/owner_id"},
 		},
 	}
-	ctr, err := database.CreateContainer(context, thruProp)
+	ctrResp, err := db.CreateContainer(context.Background(), ctrCfg, ctrProps)
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Printf("[ctr] %+v\n", ctr)
+	fmt.Printf("[ctrResp] %+v\n", ctrResp)
+
+	ctr, err := client.NewContainer(dbName, ctrName)
+	if err != nil {
+		panic(err.Error())
+	}
 
 	// create a record in the container
-	fileId := 1234    // record ID
-	fileOwner := 5678 // partition key
+	fileID := 1234  // record ID
+	ownerID := 5678 // partition key
+	filePartitionKey := azcosmos.NewPartitionKeyString(strconv.Itoa(ownerID))
 	file := map[string]interface{}{
-		"id":              fileId,
+		"id":              fileID,
+		"owner_id":        ownerID,
 		"path":            "pkg/core",
 		"filename":        "package-lock.json",
 		"project_name":    "foo",
 		"project_version": "1.2.3",
 	}
-	marshalled, err := json.Marshal(item)
+	marshalled, err := json.Marshal(file)
 	if err != nil {
 		panic(err.Error())
 	}
-	createResp, err := ctr.CreateItem(context.Background(), fileOwner, fileID, marshalled, nil)
+	createResp, err := ctr.CreateItem(context.Background(), filePartitionKey, marshalled, nil)
 	if err != nil {
 		panic(err.Error())
 	}
 	fmt.Printf("[createResp] %+v\n", createResp)
 
 	// fetch back the created record
-	readResp, err := ctr.ReadItem(context.Background(), fileOwner, fileID)
+	readResp, err := ctr.ReadItem(context.Background(), filePartitionKey, strconv.Itoa(fileID), nil)
 	if err != nil {
 		panic(err.Error())
 	}
