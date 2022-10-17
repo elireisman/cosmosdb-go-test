@@ -14,26 +14,25 @@ const (
 	emulatorURI = "https://localhost:8081"
 )
 
+func check(err error) {
+	if err != nil {
+		azRespErr, found := err.(*azcore.ResponseError)
+		if !found || azRespErr.StatusCode != http.StatusConflict {
+			panic(err.Error())
+		}
+	}
+}
+
 func main() {
 	lgr := log.Default()
 
 	// create client, using default emulator creds and URI
 	lgr.Printf("creating credential and CosmosDB emulator client")
 	cred, err := azcosmos.NewKeyCredential(emulatorKey)
-	if err != nil {
-		azRespErr, found := err.(*azcore.ResponseError)
-		if !found || azRespErr.StatusCode != http.StatusConflict {
-			panic(azRespErr.ErrorCode)
-		}
-	}
+	check(err)
 
 	client, err := azcosmos.NewClientWithKey(emulatorURI, cred, nil)
-	if err != nil {
-		azRespErr, found := err.(*azcore.ResponseError)
-		if !found || azRespErr.StatusCode != http.StatusConflict {
-			panic(azRespErr.ErrorCode)
-		}
-	}
+	check(err)
 	lgr.Printf("created CosmosDB emulator client with response: %+v", client)
 
 	// create database
@@ -41,12 +40,7 @@ func main() {
 	dbName := "eli_demo"
 	dbCfg := azcosmos.DatabaseProperties{ID: dbName}
 	dbResp, err := client.CreateDatabase(context.Background(), dbCfg, nil)
-	if err != nil {
-		azRespErr, found := err.(*azcore.ResponseError)
-		if !found || azRespErr.StatusCode != http.StatusConflict {
-			panic(azRespErr.ErrorCode)
-		}
-	}
+	check(err)
 	lgr.Printf("created CosmosDB emulator database with response: %+v", dbResp)
 
 	db, err := client.NewDatabase(dbName)
@@ -66,12 +60,7 @@ func main() {
 		},
 	}
 	ctrResp, err := db.CreateContainer(context.Background(), ctrCfg, ctrProps)
-	if err != nil {
-		azRespErr, found := err.(*azcore.ResponseError)
-		if !found || azRespErr.StatusCode != http.StatusConflict {
-			panic(azRespErr.ErrorCode)
-		}
-	}
+	check(err)
 	lgr.Printf("created CosmosDB emulator container with response: %+v", ctrResp)
 
 	ctr, err := client.NewContainer(dbName, ctrName)
@@ -96,12 +85,7 @@ func main() {
 		panic(err.Error())
 	}
 	createResp, err := ctr.CreateItem(context.Background(), filePartitionKey, marshalled, nil)
-	if err != nil {
-		azRespErr, found := err.(*azcore.ResponseError)
-		if !found || azRespErr.StatusCode != http.StatusConflict {
-			panic(azRespErr.ErrorCode)
-		}
-	}
+	check(err)
 	lgr.Printf("CosmosDB emulator create item succeeded with response: %+v", createResp)
 
 	// fetch back the created record
