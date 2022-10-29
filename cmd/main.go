@@ -3,69 +3,35 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 	"log"
-	"net/http"
-)
 
-const (
-	emulatorKey = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
-	emulatorURI = "https://localhost:8081"
+	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
+	"github.com/elireisman/cosmosdb-go-test/internal/cosmos"
+	"github.com/elireisman/cosmosdb-go-test/internal/utils"
 )
-
-func check(err error) {
-	if err != nil {
-		azRespErr, found := err.(*azcore.ResponseError)
-		if !found || azRespErr.StatusCode != http.StatusConflict {
-			panic(err.Error())
-		}
-	}
-}
 
 func main() {
 	lgr := log.Default()
 
-	// create client, using default emulator creds and URI
-	lgr.Printf("creating credential and CosmosDB emulator client")
-	cred, err := azcosmos.NewKeyCredential(emulatorKey)
-	check(err)
+	// create emulator client
+	client, err := cosmos.NewClient(lgr)
+	if err != nil {
+		lgr.Fatal(err)
+	}
 
-	client, err := azcosmos.NewClientWithKey(emulatorURI, cred, nil)
-	check(err)
-	lgr.Printf("created CosmosDB emulator client with response: %+v", client)
-
-	// create database
-	lgr.Printf("creating CosmosDB emulator database")
+	// create db instance if not exists and associate it with the client
 	dbName := "eli_demo"
-	dbCfg := azcosmos.DatabaseProperties{ID: dbName}
-	dbResp, err := client.CreateDatabase(context.Background(), dbCfg, nil)
-	check(err)
-	lgr.Printf("created CosmosDB emulator database with response: %+v", dbResp)
-
-	db, err := client.NewDatabase(dbName)
+	err = client.Database(context.Background(), dbName)
 	if err != nil {
-		panic(err.Error())
+		lgr.Fatal(err)
 	}
 
-	// create container and select partition key
-	lgr.Printf("creating CosmosDB emulator container")
-	ctrName := "files"
-	thruProp := azcosmos.NewManualThroughputProperties(400)
-	ctrProps := &azcosmos.CreateContainerOptions{ThroughputProperties: &thruProp}
-	ctrCfg := azcosmos.ContainerProperties{
-		ID: ctrName,
-		PartitionKeyDefinition: azcosmos.PartitionKeyDefinition{
-			Paths: []string{"/owner_id"},
-		},
-	}
-	ctrResp, err := db.CreateContainer(context.Background(), ctrCfg, ctrProps)
-	check(err)
-	lgr.Printf("created CosmosDB emulator container with response: %+v", ctrResp)
-
-	ctr, err := client.NewContainer(dbName, ctrName)
+	// create a container where we can store and query data
+	containerName := "manifests"
+	partitionKey := []string{"/owner_id"}
+	ctr, err := client.Container(context.Background(), dbName, containerName, partitionKey)
 	if err != nil {
-		panic(err.Error())
+		lgr.Fatal(err)
 	}
 
 	// create a record in the container
@@ -75,28 +41,30 @@ func main() {
 	file := map[string]interface{}{
 		"id":              fileID,
 		"owner_id":        ownerID,
-		"path":            "pkg/core",
+		"path":            "utils",
 		"filename":        "package-lock.json",
 		"project_name":    "foo",
 		"project_version": "1.2.3",
 	}
 	marshalled, err := json.Marshal(file)
 	if err != nil {
-		panic(err.Error())
+		lgr.Fatal(err)
 	}
 	createResp, err := ctr.CreateItem(context.Background(), filePartitionKey, marshalled, nil)
-	check(err)
+	if cosmos.Check(err) {
+		lgr.Fatal(err)
+	}
+
 	lgr.Printf("CosmosDB emulator create item succeeded with response: %+v", createResp)
 
 	// fetch back the created record
 	readResp, err := ctr.ReadItem(context.Background(), filePartitionKey, fileID, nil)
-	if err != nil {
-		panic(err.Error())
+	if cosmos.Check(err) {
+		lgr.Fatal(err)
 	}
 
-	out := map[string]interface{}{}
-	if err := json.Unmarshal(readResp.Value, &out); err != nil {
-		panic(err.Error())
+	lgr.Printf("Read back written object(id=%s):", fileID)
+	if err := utils.PrettyJSON(readResp.Value); err != nil {
+		lgr.Fatal(err)
 	}
-	lgr.Printf("Read back written object(id=%s): %+v", fileID, out)
 }
