@@ -5,8 +5,7 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
-	"github.com/elireisman/cosmosdb-go-test/internal/cosmos"
+	cosmos "github.com/elireisman/cosmosdb-go-test/internal/cosmosdb/sql"
 	"github.com/elireisman/cosmosdb-go-test/internal/utils"
 )
 
@@ -37,7 +36,7 @@ func main() {
 	// create a record in the container
 	fileID := "1234"  // record ID
 	ownerID := "5678" // partition key
-	filePartitionKey := azcosmos.NewPartitionKeyString(ownerID)
+	filePartitionKey := cosmos.PartitionKey(ownerID)
 	file := map[string]interface{}{
 		"id":              fileID,
 		"owner_id":        ownerID,

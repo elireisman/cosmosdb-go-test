@@ -33,6 +33,10 @@ func Check(err error) bool {
 	return false
 }
 
+func PartitionKey(value string) azcosmos.PartitionKey {
+	return azcosmos.NewPartitionKeyString(value)
+}
+
 func NewClient(lgr *log.Logger) (*Client, error) {
 	// create client, using default emulator creds and URI
 	lgr.Printf("creating credential and CosmosDB emulator client")
